@@ -5,6 +5,7 @@ import { Board } from './board.js';
 let curGame = null;
 let movesLog = [];
 let humanSymbolGlobal = null;
+let gameFinished = false;
 
 const playerInput = document.getElementById('playerName');
 const statusElem = document.getElementById('status');
@@ -12,8 +13,6 @@ const gamesTable = document.querySelector('#gamesTable tbody');
 const startBtn = document.getElementById('newGameBtn');
 const listBtn = document.getElementById('listBtn');
 const boardContainer = document.getElementById('boardContainer');
-const replayBtn = document.getElementById('replayBtn');
-const replayIdInput = document.getElementById('replayId');
 const gamesSection = document.getElementById('gamesList');
 
 function setStatus(text) {
@@ -34,6 +33,7 @@ function renderBoard(size) {
       boardContainer.appendChild(cell);
     }
   }
+  gameFinished = false;
 }
 
 function updateBoard(board) {
@@ -47,7 +47,8 @@ function updateBoard(board) {
 }
 
 function handleMove(r, c) {
-  if (!curGame) return;
+  if (!curGame || gameFinished) return;
+  
   const board = curGame.getBoard();
   if (!board.isCellEmpty(r, c)) return;
 
@@ -76,6 +77,8 @@ function handleMove(r, c) {
 }
 
 function computerMove() {
+  if (gameFinished) return;
+  
   const board = curGame.getBoard();
   const empty = [];
   for (let r = 0; r < board.getSize(); r++) {
@@ -103,9 +106,28 @@ function computerMove() {
   curGame.switchTurn();
 }
 
+function disableBoard() {
+  const cells = document.querySelectorAll('.cell');
+  cells.forEach(cell => {
+    cell.style.pointerEvents = 'none';
+    cell.style.opacity = '0.7';
+  });
+}
+
+function enableBoard() {
+  const cells = document.querySelectorAll('.cell');
+  cells.forEach(cell => {
+    cell.style.pointerEvents = 'auto';
+    cell.style.opacity = '1';
+  });
+}
+
 async function finishGame() {
+  gameFinished = true;
+  disableBoard();
+  
   const winner = curGame.getWinner();
-  setStatus(winner ? `Winner: ${winner}` : "It's a draw!");
+  setStatus(winner ? `🎉 Победитель: ${winner}` : "🤝 Ничья!");
 
   const gameObj = {
     date: new Date().toISOString(),
@@ -117,7 +139,7 @@ async function finishGame() {
   };
 
   await DB.addGame(gameObj);
-  setStatus(`${winner ? 'Game saved. Winner: ' + winner : 'Game saved. Draw.'}`);
+  setStatus(`${winner ? '🎉 Игра сохранена. Победитель: ' + winner : '🤝 Игра сохранена. Ничья.'} Нажмите "Новая игра" для продолжения.`);
 }
 
 function startGame() {
@@ -127,8 +149,12 @@ function startGame() {
     return;
   }
 
-  // Скрыть список игр при новой игре
   gamesSection.classList.add('hidden');
+  boardContainer.classList.remove('hidden');
+  statusElem.classList.remove('hidden');
+  
+  boardContainer.classList.add('fade-in');
+  statusElem.classList.add('slide-down');
 
   movesLog = [];
   curGame = new Game(size);
@@ -139,6 +165,8 @@ function startGame() {
 
   renderBoard(size);
   setStatus(`Вы играете за ${humanSymbolGlobal}`);
+
+  enableBoard();
 
   if (curGame.getCurrentSymbol() !== humanSymbolGlobal) {
     setTimeout(() => computerMove(), 500);
@@ -151,7 +179,7 @@ async function renderGamesList() {
   tbody.innerHTML = '';
 
   if (!games.length) {
-    tbody.innerHTML = '<tr><td colspan="6">Сохранённых игр нет.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7">Сохранённых игр нет.</td></tr>';
   } else {
     for (const g of games) {
       const tr = document.createElement('tr');
@@ -162,44 +190,78 @@ async function renderGamesList() {
         <td>${g.human_symbol || '-'}</td>
         <td>${g.winner || '-'}</td>
         <td>${g.size}</td>
+        <td>
+          <button class="replay-btn" data-id="${g.id}">
+            ▶️ Воспроизвести
+          </button>
+        </td>
       `;
       tbody.appendChild(tr);
     }
+
+    // Добавляем обработчики для всех кнопок воспроизведения
+    const replayButtons = document.querySelectorAll('.replay-btn');
+    replayButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const gameId = parseInt(e.target.closest('.replay-btn').dataset.id);
+        replayGameById(gameId);
+      });
+    });
   }
 
-  // Сделать секцию видимой
   gamesSection.classList.remove('hidden');
+  gamesSection.classList.add('fade-in');
+  boardContainer.classList.add('hidden');
+  statusElem.classList.add('hidden');
 }
 
-async function replayGameById() {
-  const gameId = parseInt(replayIdInput.value);
-  if (isNaN(gameId)) {
-    alert('Введите ID игры для воспроизведения');
-    return;
-  }
-
+async function replayGameById(gameId) {
   const game = await DB.getGameById(gameId);
   if (!game || !game.moves) {
     alert(`Игра с ID ${gameId} не найдена.`);
     return;
   }
 
-  const { size, moves, winner } = game;
+  const { size, moves, winner, player_name, human_symbol } = game;
   curGame = new Game(size);
+  
+  boardContainer.classList.remove('hidden');
+  statusElem.classList.remove('hidden');
+  gamesSection.classList.add('hidden');
+  
+  boardContainer.classList.add('fade-in');
+  statusElem.classList.add('slide-down');
+  
   renderBoard(size);
-  setStatus(`Воспроизведение игры #${gameId}...`);
+  setStatus(`Воспроизведение игры #${gameId} (${player_name}, ${human_symbol})...`);
 
+  disableBoard();
+  gameFinished = true;
+
+  // Воспроизводим ходы с анимацией
   for (let i = 0; i < moves.length; i++) {
     const move = moves[i];
-    await new Promise(res => setTimeout(res, 500));
+    await new Promise(res => setTimeout(res, 600)); // Немного увеличили задержку для лучшей читаемости
     curGame.getBoard().setCell(move.row, move.col, move.player);
     updateBoard(curGame.getBoard());
+    
+    // Обновляем статус с текущим ходом
+    setStatus(`Воспроизведение игры #${gameId}... Ход ${i + 1}/${moves.length}`);
   }
 
-  setStatus(`Воспроизведение завершено. ${winner ? 'Победитель: ' + winner : 'Ничья.'}`);
+  setStatus(`Воспроизведение завершено. ${winner ? '🏆 Победитель: ' + winner : '🤝 Ничья.'} Игрок: ${player_name} (${human_symbol})`);
 }
+
+// Убираем старые обработчики воспроизведения
+// replayBtn.removeEventListener('click', replayGameById);
 
 // события
 startBtn.addEventListener('click', startGame);
 listBtn.addEventListener('click', renderGamesList);
-replayBtn.addEventListener('click', replayGameById);
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+  boardContainer.classList.add('hidden');
+  statusElem.classList.add('hidden');
+  gamesSection.classList.add('hidden');
+});

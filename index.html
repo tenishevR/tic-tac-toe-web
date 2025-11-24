@@ -8,38 +8,59 @@
 </head>
 <body>
   <main class="container">
-    <h1>Tic-Tac-Toe (Web)</h1>
+    <h1>🎮 Tic-Tac-Toe</h1>
 
     <section id="menu">
-      <label>Размер поля
+      <label>
+        <span>📐 Размер поля</span>
         <select id="size">
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
+          <option value="3">3×3</option>
+          <option value="4">4×4</option>
+          <option value="5">5×5</option>
         </select>
       </label>
-      <label>Имя:
+      
+      <label>
+        <span>👤 Игрок</span>
         <input id="playerName" type="text" placeholder="Ваше имя" />
       </label>
-      <button id="newGameBtn">Новая игра</button>
-      <button id="listBtn">Список игр</button>
-      <input id="replayId" placeholder="ID для реплея" style="width:80px" />
-      <button id="replayBtn">Воспроизвести</button>
+      
+      <button id="newGameBtn">🆕 Новая игра</button>
+      <button id="listBtn">📋 Список игр</button>
+      
+      <!-- Убираем старое поле для воспроизведения -->
+      <!-- <label>
+        <span>🔄 Воспроизвести игру</span>
+        <div style="display: flex; gap: 8px;">
+          <input id="replayId" placeholder="ID игры" />
+          <button id="replayBtn">▶️</button>
+        </div>
+      </label> -->
     </section>
 
-    <section id="boardContainer"></section>
+    <section id="boardContainer" class="hidden text-center"></section>
 
     <section id="gamesList" class="hidden">
-      <h2>Сохранённые игры</h2>
+      <h2>📊 История игр</h2>
       <table id="gamesTable">
-        <thead><tr><th>ID</th><th>Date</th><th>Player</th><th>Symbol</th><th>Winner</th><th>Size</th></tr></thead>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>📅 Дата</th>
+            <th>👤 Игрок</th>
+            <th>🎯 Символ</th>
+            <th>🏆 Победитель</th>
+            <th>📏 Размер</th>
+            <th>🎮 Действия</th> <!-- Новая колонка -->
+          </tr>
+        </thead>
         <tbody></tbody>
       </table>
     </section>
 
-    <div id="status"></div>
+    <div id="status" class="hidden"></div>
   </main>
 
-<script type="module" src="src/app.js"></script>
+  <script type="module" src="src/app.js"></script>
 </body>
 </html>
